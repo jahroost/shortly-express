@@ -3,6 +3,7 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var session = require('express-session')
+var crypto = require('crypto');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -10,6 +11,7 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+var favicon = require('serve-favicon');
 
 var app = express();
 
@@ -26,6 +28,7 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
 }))
+app.use(favicon(__dirname + '/public/images/favicon.webp'));
 
 app.get('/', function(req, res) {
   console.log(req.sessionID, req.session.loggedIn)
@@ -77,31 +80,16 @@ app.post('/links', function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
-app.get('/login', function(req,res){
-
-  res.render('login');
-
-});
-
-app.post('/login', function(req, res) {
-  // res.render('index')
-
-  // var user = new User()
-  // user.username = req.body.u
-  // user.password = req.body.p
-  // user.register().then((registeredUser) => {
-  //   json.send(registerUser)
-  // })
-
-  req.session.loggedIn = true
-  // User.register({
-  //   username: '',
-  //   password: ''
-  // }).then((registeredUser) => {
-  //   json.send(registerUser)
-  // })
-  res.redirect('/')
-})
+// app.get('/login', function(req,res){
+//
+//   res.render('login');
+//
+// });
+//
+// app.post('/login', function(req, res) {
+//   req.session.loggedIn = true
+//   res.redirect('/')
+// })
 
 app.get('/signup', function(req,res){
 
@@ -111,25 +99,54 @@ app.get('/signup', function(req,res){
 
 app.post('/signup', function(req, res) {
   console.log('user info /signup: ',  req.body)
-  // check if there's a user with that username
-    //if there is a match
-      //end response with 400
-    //else
-      //save username and pasword to database
-      new User({username: req.body.username}).fetch().then(function(found) {
+  var user = req.body.username
+  var pass = req.body.password
+
+      new User({username: user}).fetch().then(function(found) {
+        console.log(found);
         if (found) {
-          res.status(400).send('already exists')
+          console.log('YYYYYYYYYYYYYYYOOOOOOOOOOOOOO IM PICKLE RICK!!')
+          res.status(400);
+          res.redirect('signup')
         } else {
-          User.create({
-            username: req.body.username,
-            password: req.body.password
+          console.log('usrAttr', {
+            username: user,
+            password: pass
           })
+          new User({
+            username: user,
+            password: pass
+          })
+          .save()
+          .then(function() {
+            res.redirect('/')
+        })
+      }
+    })
+  // res.end()
+})
+
+app.get('/login', function(req,res){
+
+  res.render('login');
+
+});
+
+app.post('/login', function(req, res) {
+  console.log('user info /login: ',  req.body)
+  var user = req.body.username
+  var pass = req.body.password
+      new User({username: user, password: pass}).fetch().then(function(found) {
+        console.log(found);
+        if (found) {
+          res.redirect('/')
+        } else {
+          res.status(400)
+          res.redirect('signup')
         }
       })
-      //attatch session attributes
-      //end response
-  res.end()
-})
+  })
+  // res.end()
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
