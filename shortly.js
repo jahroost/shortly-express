@@ -2,7 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-
+var session = require('express-session')
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -21,28 +21,30 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
+app.use(session({
+  secret: 'whatever you want',
+  resave: false,
+  saveUninitialized: true,
+}))
 
-
-app.get('/', 
-function(req, res) {
+app.get('/', function(req, res) {
+  console.log(req.sessionID, req.session.loggedIn)
   res.render('index');
 });
 
-app.get('/create', 
-function(req, res) {
+app.get('/create', function(req, res) {
   res.render('index');
 });
 
-app.get('/links', 
-function(req, res) {
+app.get('/links',/*middleware,*/ function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.status(200).send(links.models);
   });
 });
 
-app.post('/links', 
-function(req, res) {
+app.post('/links', function(req, res) {
   var uri = req.body.url;
+
 
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
@@ -75,8 +77,59 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+app.get('/login', function(req,res){
 
+  res.render('login');
 
+});
+
+app.post('/login', function(req, res) {
+  // res.render('index')
+
+  // var user = new User()
+  // user.username = req.body.u
+  // user.password = req.body.p
+  // user.register().then((registeredUser) => {
+  //   json.send(registerUser)
+  // })
+
+  req.session.loggedIn = true
+  // User.register({
+  //   username: '',
+  //   password: ''
+  // }).then((registeredUser) => {
+  //   json.send(registerUser)
+  // })
+  res.redirect('/')
+})
+
+app.get('/signup', function(req,res){
+
+  res.render('signup');
+
+});
+
+app.post('/signup', function(req, res) {
+  console.log('user info /signup: ',  req.body)
+  // check if there's a user with that username
+    //if there is a match
+      //end response with 400
+    //else
+      //save username and pasword to database
+      new User({username: req.body.username}).fetch().then(function(found) {
+        if (found) {
+          res.status(400).send('already exists')
+        } else {
+          User.create({
+            username: req.body.username,
+            password: req.body.password
+          })
+        }
+      })
+      //attatch session attributes
+      //end response
+  res.end()
+})
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
@@ -85,8 +138,8 @@ function(req, res) {
 /************************************************************/
 
 app.get('/*', function(req, res) {
-  new Link({ code: req.params[0] }).fetch().then(function(link) {
-    if (!link) {
+  new User({ code: req.params[0] }).fetch().then(function(link) {
+    if (!User) {
       res.redirect('/');
     } else {
       var click = new Click({
